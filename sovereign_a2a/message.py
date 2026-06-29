@@ -64,67 +64,9 @@ class A2AErrorCodes:
 
 
 class A2AMessage:
-    """Static factory methods for constructing A2A 3.0 messages.
-
-    Agents specify only their content — the 3.0 envelope is automatic.
-    Never construct raw JSON-RPC dicts directly; always use these methods.
-
-    Usage (sender):
-      msg = A2AMessage.request(
-          method="imap-smtp-email/check_unread",
-          params={"skill": "imap-smtp-email", "operation": "check_unread", "payload": {...}},
-          id="req-abc123",
-          metadata={"context_hints": {"tier": "MID"}}
-      )
-
-    Usage (responder — success):
-      return A2AMessage.success(
-          id=request_id,
-          result={"success": True, "status_code": "IMAP OK", "data": {...}},
-          hints={"execution_path": "dsl"},
-          agent_card=_get_agent_card(),
-      )
-
-    Usage (responder — error):
-      return A2AMessage.error(
-          id=request_id,
-          code=A2AErrorCodes.ADAPTER_UNAVAILABLE,
-          message="IMAP connection refused",
-          data={"skill": "imap-smtp-email", "operation": "check_unread"},
-      )
-    """
+    """Static factory methods for constructing A2A 3.0 response envelopes."""
 
     JSONRPC: str = "3.0"
-
-    @classmethod
-    def request(
-        cls,
-        method: str,
-        params: dict[str, Any],
-        id: str,
-        metadata: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """Construct an outbound A2A 3.0 request.
-
-        Args:
-            method:   "<skill>/<operation>" — e.g. "imap-smtp-email/check_unread"
-            params:   {"skill": ..., "operation": ..., "payload": {...}}
-            id:       request_id from envelope (echoed in response)
-            metadata: optional overrides; merged with defaults
-        """
-        meta = cls._default_metadata()
-        if metadata:
-            # Deep merge context_hints so callers only specify what they override
-            caller_hints = metadata.pop("context_hints", {})
-            meta.update(metadata)
-            meta["context_hints"].update(caller_hints)
-        return {
-            "jsonrpc":  cls.JSONRPC,
-            "id":       id,
-            "method":   method,
-            "params":   params,
-            "metadata": meta,
-        }
 
     @classmethod
     def success(
@@ -181,35 +123,6 @@ class A2AMessage:
             "metadata": {"context_hints": hints or {}},
         }
 
-    @classmethod
-    def partial(
-        cls,
-        id: str,
-        result: dict[str, Any],
-        remaining: int = -1,
-    ) -> dict[str, Any]:
-        """Construct a partial result for streaming operations.
-
-        Args:
-            id:        request_id
-            result:    partial result payload
-            remaining: number of chunks remaining; -1 = unknown
-        """
-        return {
-            "jsonrpc":  cls.JSONRPC,
-            "id":       id,
-            "result":   result,
-            "metadata": {"partial": True, "remaining": remaining},
-        }
-
-    @classmethod
-    def _default_metadata(cls) -> dict[str, Any]:
-        return {
-            "priority":      "normal",
-            "stream":        False,
-            "capabilities":  [],
-            "context_hints": {},
-        }
 
 
 class A2AResponse:
